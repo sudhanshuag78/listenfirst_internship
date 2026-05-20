@@ -1,0 +1,3 @@
+City: Kota Bharu
+Temperature: 31.0°C
+Condition: Patchy rain nearby

@@ -1,0 +1,171 @@
+/* ============================================
+   Card Component Styles
+   ============================================ */
+
+.card {
+  background-color: white;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-md);
+  transition: all var(--transition-base);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.card:hover {
+  box-shadow: var(--shadow-xl);
+  transform: translateY(-8px);
+}
+
+/* Card Image Section */
+.card-image-container {
+  position: relative;
+  width: 100%;
+  padding-bottom: 100%;
+  overflow: hidden;
+  background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+}
+
+.card-image {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform var(--transition-base);
+}
+
+.card:hover .card-image {
+  transform: scale(1.08);
+}
+
+.card-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0);
+  transition: background var(--transition-base);
+}
+
+.card:hover .card-overlay {
+  background: rgba(99, 102, 241, 0.1);
+}
+
+/* Card Content Section */
+.card-content {
+  padding: var(--spacing-lg);
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+}
+
+.card-name {
+  margin: 0 0 var(--spacing-sm) 0;
+  font-size: var(--font-size-xl);
+  color: var(--neutral-900);
+}
+
+.card-role {
+  margin: 0 0 var(--spacing-xs) 0;
+  font-size: var(--font-size-base);
+  color: var(--primary-color);
+  font-weight: 600;
+}
+
+.card-location {
+  margin: 0 0 var(--spacing-md) 0;
+  font-size: var(--font-size-sm);
+  color: var(--neutral-400);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+.card-location::before {
+  content: '📍';
+  font-size: var(--font-size-base);
+}
+
+.card-bio {
+  margin: 0 0 var(--spacing-lg) 0;
+  font-size: var(--font-size-sm);
+  color: var(--neutral-600);
+  line-height: 1.5;
+  flex-grow: 1;
+}
+
+/* Card Button */
+.card-button {
+  display: inline-block;
+  background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+  color: white;
+  padding: var(--spacing-md) var(--spacing-lg);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: all var(--transition-fast);
+  text-align: center;
+  width: 100%;
+}
+
+.card-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 16px -2px rgba(99, 102, 241, 0.3);
+}
+
+.card-button:active {
+  transform: translateY(0);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .card {
+    border-radius: var(--radius-md);
+  }
+
+  .card-content {
+    padding: var(--spacing-md);
+  }
+
+  .card-name {
+    font-size: var(--font-size-lg);
+  }
+
+  .card-bio {
+    font-size: var(--font-size-sm);
+  }
+
+  .card-button {
+    padding: var(--spacing-sm) var(--spacing-md);
+    font-size: var(--font-size-sm);
+  }
+}
+
+@media (max-width: 480px) {
+  .card-content {
+    padding: var(--spacing-md);
+  }
+
+  .card-name {
+    font-size: var(--font-size-base);
+  }
+
+  .card-role {
+    font-size: var(--font-size-sm);
+  }
+
+  .card-bio {
+    font-size: var(--font-size-xs, 0.8rem);
+    margin-bottom: var(--spacing-md);
+  }
+
+  .card-button {
+    padding: var(--spacing-sm) var(--spacing-md);
+  }
+}
