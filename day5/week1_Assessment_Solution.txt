@@ -1,0 +1,329 @@
+Section a 
+Que 1 
+ List stores ordered, changeable items and allows duplicates. Example: use a list for a to-do app where tasks can be added, removed, or reordered. 
+Tuple stores ordered but unchangeable items. Example: use a tuple for fixed coordinates like (x, y) because they should not change accidentally. 
+Set stores unique items only and is unordered. Example: use a set to remove duplicate email IDs from a collection quickly. 
+Dict (dictionary) stores data in key: value pairs for fast lookup. Example: use a dict for student records like {"name": "Rahul", "marks": 90} where each key has a related value. 
+Choose a list when order and editing matter, a tuple when data should stay fixed, a set when uniqueness matters, and a dict when you need labeled data with quick access.
+
+
+Que 2
+
+result = [n * n for n in range(1, 21) if n % 2 == 0]
+
+que 3 
+import json
+def read_json_safely(path):
+    try:
+        with open(path, "r") as file:
+            return json.load(file)
+    except FileNotFoundError:
+        return {}
+    except json.JSONDecodeError:
+        return None
+
+que 4
+
+(a) Maximum line length: PEP 8 recommends keeping lines to 79 characters maximum. 
+(b) Functions and variables: Use snake_case (lowercase words separated by underscores). 
+(c) Classes: Use PascalCase / CapWords (each word starts with a capital letter).
+(d) Indentation: Use 4 spaces per indentation level (not tabs). 
+(e) Blank lines between top-level function definitions: Use 2 blank lines between them. 
+
+Que 5 
+mkdir expense-tracker
+cd expense-tracker
+python3 -m venv venv
+source venv/bin/activate
+pip install requests pydantic
+pip freeze > requirements.txt
+
+
+SECTION B   Python for AI (Day 2)
+
+Que 6 
+import requests
+import sys
+url = "https://api.github.com/users/anthropics"
+try:
+    response = requests.get(url)
+
+    if response.status_code != 200:
+        print(f"Error: Request failed with status code {response.status_code}")
+        sys.exit()
+
+    data = response.json()
+
+    print("Name:", data["name"])
+    print("Public Repos:", data["public_repos"])
+    print("Followers:", data["followers"])
+
+except requests.RequestException as e:
+    print(f"Request error: {e}")
+    sys.exit()
+
+que 7 
+
+API keys should never be hard-coded because they can accidentally get pushed to GitHub, leaked to others, or stolen from shared code. 
+The recommended approach is to store secrets in a .env file and load them using the python-dotenv package. 
+You call the load_dotenv() function to load variables from the .env file into the environment.
+
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+
+api_key = os.getenv("OPENAI_API_KEY")
+
+
+que 8
+from pydantic import BaseModel, Field
+from typing import List
+
+
+class WeatherReport(BaseModel):
+    city: str = Field(..., min_length=1)
+    temperature_c: float = Field(..., ge=-50, le=60)
+    humidity: int = Field(..., ge=0, le=100)
+    conditions: List[str]
+
+
+# Valid example
+report = WeatherReport(
+    city="Jaipur",
+    temperature_c=31.4,
+    humidity=42,
+    conditions=["sunny", "windy"]
+)
+
+print(report)
+
+
+# Invalid example (will fail validation)
+bad_report = WeatherReport(
+    city="",
+    temperature_c=75,
+    humidity=120,
+    conditions=["hot"]
+)
+
+Que 9
+
+import httpx
+async def fetch(url):
+    async with httpx.AsyncClient(timeout=10) as client:
+        response = await client.get(url)
+
+        response.raise_for_status()
+
+        return response.json()
+
+SECTION C   React Basics (Day 3)
+
+Que 10
+
+npm create vite@latest intern-app -- --template react
+
+cd intern-app
+
+npm install
+
+npm run dev
+
+
+que 11
+
+function ProfileCard(props) {
+  return (
+    <div className="card">
+      <img src={props.avatar} alt="Profile Avatar" />
+
+      <h2>{props.name}</h2>
+
+      <p>Role: {props.role}</p>
+
+      <button onClick={props.onFollow}>
+        Follow
+      </button>
+    </div>
+  );
+}
+
+
+Bugs fixed:
+* class ? className 
+* <p> tag was not closed properly 
+* onclick ? onClick 
+* Added alt attribute to <img /> 
+* Improved formatting/readability 
+
+Que 12
+
+function Badge({ label, color = "#2E75B6" }) {
+  return (
+    <span
+      style={{
+        backgroundColor: color,
+        color: "white",
+        padding: "6px 12px",
+        borderRadius: "20px",
+        fontSize: "14px",
+        marginRight: "10px"
+      }}
+    >
+      {label}
+    </span>
+  );
+}
+
+
+// Example usage
+function App() {
+  return (
+    <div>
+      <Badge label="Frontend" color="blue" />
+
+      <Badge label="Backend" color="green" />
+
+      <Badge label="AI Intern" />
+    </div>
+  );
+}
+
+export default App;
+
+SECTION D   React State & Hooks (Day 4)
+
+Que 13
+
+Props are data passed from a parent component to a child component, and they are read-only. 
+State is data managed inside a component that can change over time. 
+Use props when sending information like a username or profile image to another component. 
+Use state when handling dynamic data like a counter, form input, or light on/off toggle. 
+Example of props: <Profile name="Sudhanshu" /> 
+Example of state: const [count, setCount] = useState(0) for a button click counter.
+
+Que 14 
+import { useState } from "react";
+
+function Counter() {
+  const [count, setCount] = useState(0);
+
+  const increase = () => {
+    setCount(count + 1);
+  };
+
+  const decrease = () => {
+    if (count > 0) {
+      setCount(count - 1);
+    }
+  };
+
+  const reset = () => {
+    setCount(0);
+  };
+
+  return (
+    <div>
+      <h1>{count}</h1>
+
+      <button onClick={increase}>+1</button>
+
+      <button onClick={decrease}>-1</button>
+
+      <button onClick={reset}>Reset</button>
+    </div>
+  );
+}
+
+export default Counter;
+
+
+que 15
+import { useEffect, useState } from "react";
+
+function UserList() {
+  const [users, setUsers] = useState([]);
+
+  useEffect(() => {
+    fetch("https://api.example.com/users")
+      .then((r) => r.json())
+      .then((data) => setUsers(data));
+  }, []);
+
+  return (
+    <ul>
+      {users.map((u) => (
+        <li key={u.id}>{u.name}</li>
+      ))}
+    </ul>
+  );
+}
+
+export default UserList;
+
+
+que 16 
+
+import { useEffect, useState } from "react";
+
+function SearchableList() {
+  const [users, setUsers] = useState([]);
+  const [search, setSearch] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    fetch("https://jsonplaceholder.typicode.com/users")
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error("Failed to fetch users");
+        }
+
+        return response.json();
+      })
+      .then((data) => {
+        setUsers(data);
+        setLoading(false);
+      })
+      .catch((err) => {
+        setError(err.message);
+        setLoading(false);
+      });
+  }, []);
+
+  const filteredUsers = users.filter((user) =>
+    user.name.toLowerCase().includes(search.toLowerCase())
+  );
+
+  if (loading) {
+    return <p>Loading...</p>;
+  }
+
+  if (error) {
+    return <p>Error: {error}</p>;
+  }
+
+  return (
+    <div>
+      <input
+        type="text"
+        placeholder="Search users..."
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+      />
+
+      {filteredUsers.length === 0 ? (
+        <p>No users found</p>
+      ) : (
+        <ul>
+          {filteredUsers.map((user) => (
+            <li key={user.id}>{user.name}</li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+export default SearchableList;
