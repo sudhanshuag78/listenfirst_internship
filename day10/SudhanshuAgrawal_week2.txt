@@ -1,0 +1,537 @@
+SECTION A — RAG (Day 6)
+
+que 1
+    Retrieval-Augmented Generation (RAG) exists because vanilla LLMs have two major weaknesses: they can hallucinate facts, and their knowledge becomes outdated after training. A standard LLM answers only from patterns stored in its parameters, so it may confidently invent information or miss recent events and domain-specific details. RAG adds a retrieval step that searches external sources—such as databases, documents, or the web—for relevant information before the model generates a response. By grounding the answer in retrieved evidence, the system becomes more accurate and current, reducing hallucinations and eliminating the need to constantly retrain the model on new data. This also lets organizations connect LLMs to private or specialized knowledge bases without changing the underlying model itself.
+
+
+
+que 2
+
+
+(a) Embedding:
+An embedding is a numerical vector representation of text that captures its meaning so similar texts end up close together in vector space.
+
+(b) Vector similarity (and the metric most commonly used):
+Vector similarity measures how close two embeddings are in meaning, and the most commonly used metric is cosine similarity.
+
+(c) Chunk size:
+Chunk size is the amount of text split into one piece before storing it for retrieval.
+
+(d) Chunk overlap:
+Chunk overlap is the number of shared words or characters between consecutive chunks to preserve context across boundaries.
+
+(e) Top-k retrieval:
+Top-k retrieval means fetching the k most relevant chunks from the vector database based on similarity to the user’s query.
+
+
+que 3
+
+
+
+With chunk_size = 2000 and chunk_overlap = 0 for a 200-page policy manual, retrieval quality will likely suffer in these three ways:
+
+Too much irrelevant text per chunk:
+A 2000-character/token chunk can contain multiple policy sections, so retrieval may return a chunk with the answer buried inside lots of unrelated content, making the LLM less precise.
+Boundary information gets lost:
+With 0 overlap, if an important paragraph starts in one chunk and ends in the next, retrieval may miss part of the context and return incomplete answers.
+Lower similarity accuracy:
+Large chunks mix several topics together, which makes embeddings less focused and reduces the chance that the most relevant chunk ranks highly.
+
+Better values:
+
+chunk_size = 500–800
+chunk_overlap = 100–150
+
+Justification :
+This keeps each chunk focused enough to match 1–2 paragraph answers accurately while overlap preserves context when important information spans chunk boundaries.
+
+
+
+que 4
+
+
+# pip install chromadb sentence-transformers
+
+import chromadb
+from sentence_transformers import SentenceTransformer
+
+# -----------------------------
+# 1. Hard-coded documents
+# -----------------------------
+documents = [
+    "Python is a popular programming language for web development and automation.",
+    "ChromaDB is a vector database used for storing embeddings and retrieval.",
+    "Machine learning models can understand text using embeddings."
+]
+
+doc_ids = ["doc1", "doc2", "doc3"]
+
+# -----------------------------
+# 2. Load embedding model
+# -----------------------------
+model = SentenceTransformer("all-MiniLM-L6-v2")
+
+# Generate embeddings
+doc_embeddings = model.encode(documents).tolist()
+
+# -----------------------------
+# 3. Create Chroma client + collection
+# -----------------------------
+client = chromadb.Client()
+
+collection = client.get_or_create_collection(
+    name="demo_collection"
+)
+
+# Add docs to collection
+collection.add(
+    ids=doc_ids,
+    documents=documents,
+    embeddings=doc_embeddings
+)
+
+# -----------------------------
+# 4. Query
+# -----------------------------
+query = "How does a vector database store embeddings?"
+
+# Embed query
+query_embedding = model.encode(query).tolist()
+
+# Retrieve top-2 similar docs
+results = collection.query(
+    query_embeddings=[query_embedding],
+    n_results=2
+)
+
+# -----------------------------
+# 5. Print results
+# -----------------------------
+print("Query:", query)
+print("\nTop 2 Results:\n")
+
+for i, doc in enumerate(results["documents"][0], start=1):
+    print(f"{i}. {doc}")
+
+
+
+
+que 5
+
+
+That failure mode is called hallucination (or more specifically in RAG, ungrounded hallucination)—the model gives a believable answer but includes facts not actually supported by the retrieved documents.
+
+Three concrete ways to reduce it:
+
+Improve retrieval quality:
+Tune chunk size/overlap, increase or adjust top-k, and optionally use reranking so the most relevant chunks are retrieved before generation.
+Strengthen the prompt:
+Use instructions like “Answer only from the provided context. If the answer is not present, say ‘I don’t know based on the documents.’ Quote or cite the supporting chunk.”
+Add evaluation checks:
+Test with a validation set and verify whether every answer is grounded in retrieved chunks (for example checking citation accuracy or using a faithfulness metric) to catch hallucinated facts early.
+
+
+
+
+
+SECTION B — LangChain (Day 7)
+
+
+que 6 
+
+
+The LangChain Expression Language (LCEL) is a declarative way to build AI chains by connecting components like prompts, models, retrievers, and output parsers into one pipeline. The pipe (|) operator passes the output of one component directly into the next, making the whole flow read left to right. For example: prompt | llm | parser means the prompt goes to the LLM, then the model’s output goes to the parser. LCEL is preferred over manually chaining .invoke() calls because it’s cleaner, easier to read, and LangChain can automatically handle features like streaming, async execution, batching, and debugging across the whole chain.
+
+
+que 7
+
+import os
+from dotenv import load_dotenv
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.output_parsers import StrOutputParser
+from langchain_mistralai import ChatMistralAI
+
+load_dotenv()
+
+prompt = ChatPromptTemplate.from_template(
+    "Write a one-sentence tagline for: {topic}"
+)
+
+llm = ChatMistralAI(
+    model="mistral-small-latest",
+    temperature=0.7,
+    mistral_api_key=os.getenv("MISTRAL_API_KEY")
+)
+
+parser = StrOutputParser()
+
+chain = prompt | llm | parser
+
+print(chain.invoke({"topic": "electric scooters"}))
+
+
+que 8
+
+
+import os
+from dotenv import load_dotenv
+from pydantic import BaseModel, Field
+
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.output_parsers import PydanticOutputParser
+from langchain_mistralai import ChatMistralAI
+
+# Load .env
+load_dotenv()
+
+# -----------------------------
+# 1. Pydantic model
+# -----------------------------
+class MovieReview(BaseModel):
+    title: str = Field(description="Movie title")
+    rating: int = Field(
+        ge=1,
+        le=10,
+        description="Movie rating from 1 to 10"
+    )
+    one_line_review: str = Field(
+        description="Short one-line review"
+    )
+
+# -----------------------------
+# 2. Parser
+# -----------------------------
+parser = PydanticOutputParser(
+    pydantic_object=MovieReview
+)
+
+# -----------------------------
+# 3. Prompt template
+# -----------------------------
+prompt = ChatPromptTemplate.from_template(
+    """
+Generate a movie review for the movie: {movie_name}
+
+{format_instructions}
+"""
+)
+
+# -----------------------------
+# 4. Mistral model
+# -----------------------------
+llm = ChatMistralAI(
+    model="mistral-small-latest",
+    temperature=0.7,
+    mistral_api_key=os.getenv("MISTRAL_API_KEY")
+)
+
+# -----------------------------
+# 5. LCEL chain
+# -----------------------------
+chain = (
+    prompt.partial(
+        format_instructions=parser.get_format_instructions()
+    )
+    | llm
+    | parser
+)
+
+# -----------------------------
+# 6. Invoke
+# -----------------------------
+result = chain.invoke(
+    {"movie_name": "Inception"}
+)
+
+print(result)
+print(type(result))
+
+
+
+
+
+que 9
+
+
+
+
+
+(a) Loading the PDF:
+PyPDFLoader (from langchain_community.document_loaders)
+
+(b) Splitting it into chunks:
+RecursiveCharacterTextSplitter (from langchain.text_splitter)
+
+(c) Embedding the chunks:
+GoogleGenerativeAIEmbeddings (from langchain_google_genai)
+(or OpenAIEmbeddings / HuggingFaceEmbeddings, depending on model)
+
+(d) Storing them in a vector store:
+Chroma (from langchain_community.vectorstores)
+
+(e) Retrieving relevant chunks at query time:
+vectorstore.as_retriever() → returns a VectorStoreRetriever
+
+(f) Combining retrieved context + question into prompt + model + parser:
+ChatPromptTemplate | ChatGoogleGenerativeAI | StrOutputParser (LCEL chain)
+
+
+
+
+SECTION C — LangGraph & Agents (Day 8)
+
+que 10
+
+
+In LangChain/LangGraph, a chain is a linear workflow where each step runs in a fixed order and passes output to the next step. It works well for predictable flows like prompt → model → parser. A graph is more flexible because it lets the system branch, loop, and make decisions based on intermediate results. For example, in a RAG app a graph can check whether retrieved documents are relevant; if not, it can loop back, search again, and retry before answering. A normal chain cannot easily do this because it follows only one straight path without dynamic decision-making.
+
+que 11
+
+
+1. State:
+State is the shared data object that stores the graph’s current information, such as the user’s question, retrieved documents, and final answer.
+
+2. Nodes:
+Nodes are individual functions or steps in the graph that read the current state and update or add new values to it.
+
+3. Edges:
+Edges are fixed connections that define which node runs next after the current node finishes.
+
+4. Conditional edges:
+Conditional edges choose the next node based on a condition, allowing the graph to make decisions at runtime.
+
+How state flows through the graph:
+The graph starts with an initial state and passes it to the first node. That node processes the state, updates it, and sends the updated version along an edge to the next node. Each following node receives the latest state, adds or changes data, and passes it forward. This continues until the graph reaches the END node, where the final state becomes the output.
+
+
+
+que 12
+
+
+
+from typing import TypedDict, List
+from langgraph.graph import StateGraph, START, END
+
+# -----------------------------
+# 1. Define state
+# -----------------------------
+class GraphState(TypedDict):
+    messages: List[str]
+
+# -----------------------------
+# 2. Node: greet
+# -----------------------------
+def greet(state: GraphState):
+    return {
+        "messages": state["messages"] + ["Hello!"]
+    }
+
+# -----------------------------
+# 3. Node: farewell
+# -----------------------------
+def farewell(state: GraphState):
+    return {
+        "messages": state["messages"] + ["Goodbye!"]
+    }
+
+# -----------------------------
+# 4. Build graph
+# -----------------------------
+graph = StateGraph(GraphState)
+
+# Add nodes
+graph.add_node("greet", greet)
+graph.add_node("farewell", farewell)
+
+# Connect nodes
+graph.add_edge(START, "greet")
+graph.add_edge("greet", "farewell")
+graph.add_edge("farewell", END)
+
+# Compile graph
+app = graph.compile()
+
+# -----------------------------
+# 5. Invoke
+# -----------------------------
+result = app.invoke(
+    {"messages": []}
+)
+
+print(result)
+
+
+
+
+que 13
+
+
+
+1. State shape
+State = {
+    "user_input": str,
+    "messages": list,
+    "tool_result": str | None,
+    "final_answer": str | None,
+    "tool_calls": int
+}
+
+Meaning:
+
+user_input → user’s question
+messages → conversation history / reasoning
+tool_result → output from search tool
+final_answer → final response
+tool_calls → counter to avoid infinite loops
+2. Nodes
+Agent node
+
+Reads the question + previous tool result and decides:
+
+answer directly
+OR request search tool
+
+Example logic:
+
+if question is simple:
+    final_answer = direct answer
+else:
+    request search
+Tool node
+
+Runs search tool.
+
+Example:
+
+search(user_input)
+store result in tool_result
+tool_calls += 1
+End node
+
+Returns final answer.
+
+Example:
+
+return final_answer
+3. Conditional edge
+
+After agent node:
+
+if final_answer exists:
+    go to END
+
+if search needed:
+    go to TOOL
+
+After tool node:
+
+go back to AGENT
+
+Graph flow:
+
+START
+  ↓
+AGENT
+ ├── answer ready ──→ END
+ └── need search ──→ TOOL
+                      ↓
+                    AGENT
+4. How loop terminates
+
+To avoid running forever:
+
+Rule 1:
+If agent creates final_answer → go to END
+
+Rule 2:
+Max tool calls
+
+Example:
+
+if tool_calls >= 2:
+    final_answer = "I could not find enough information."
+    END
+
+Final flow:
+
+START
+→ AGENT
+   ├─ answer ready → END
+   └─ search needed → TOOL
+                       ↓
+                     AGENT
+                       ↓
+              (repeat max 2 times)
+                       ↓
+                      END
+
+
+
+
+SECTION D — MCP (Day 9)
+
+
+que 14
+
+
+The Model Context Protocol (MCP) solves the problem of connecting AI models to external systems in a standard way, so every tool or data source doesn’t need a custom integration. It defines three roles: the host is the app the user interacts with (like an AI assistant), the client manages the connection and sends requests, and the server provides capabilities to the model. An MCP server can expose tools, which are actions the model can call (like search or database queries). It can also expose resources, which are readable pieces of data such as files, documents, or API results. Finally, it can expose prompts, which are reusable prompt templates or instructions the model can request when needed.
+
+
+que 15
+
+
+MCP Tool:
+An MCP tool lets the model perform an action or execute a function, for example a web search tool that searches the internet for “latest AI news.”
+
+MCP Resource:
+An MCP resource gives the model access to read existing data, for example a PDF policy manual or a database record that the model can fetch and use as context.
+
+
+
+que 16
+
+
+# pip install mcp
+
+from mcp.server.fastmcp import FastMCP
+
+# -----------------------------
+# 1. Server initialization
+# -----------------------------
+mcp = FastMCP("word-counter-server")
+
+
+# -----------------------------
+# 2. Tool
+# -----------------------------
+@mcp.tool()
+def word_count(text: str) -> int:
+    """
+    Count the number of words in a given string.
+    """
+    return len(text.split())
+
+
+# -----------------------------
+# 3. Run server over stdio
+# -----------------------------
+if __name__ == "__main__":
+    mcp.run()
+
+
+
+que 17
+
+
+
+1) One standard connection for many tools:
+
+With normal function calling, every app has to manually wire each tool separately for every LLM or SDK you use. MCP gives one common standard, so if you connect a tool once, different AI apps or models can reuse it without rebuilding the integration each time.
+
+2) Easier to share and maintain:
+
+With MCP, tools and data sources run as separate servers, so your team can update or add capabilities in one place and every connected model gets access automatically. That makes collaboration simpler and avoids duplicating the same tool code across multiple projects.
+
+
+
+
